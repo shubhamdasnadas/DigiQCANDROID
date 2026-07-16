@@ -1,0 +1,6 @@
+{
+  "name": "Valid8",
+  "description": "Modern, minimalistic and fully responsive Quality Inspection Application based on Valid8.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
