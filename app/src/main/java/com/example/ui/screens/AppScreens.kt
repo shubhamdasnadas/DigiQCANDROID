@@ -1609,6 +1609,27 @@ fun InspectionTabView(viewModel: AppViewModel, isWide: Boolean) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                val nextNodes = when (pickerPath.size) {
+                    1 -> listOf("Wing - NA")
+                    2 -> listOf("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10")
+                    3 -> listOf("F1 - Lobby Area", "Flat 101", "Flat 102", "Flat 103", "Flat 104")
+                    4 -> {
+                        val last = pickerPath.lastOrNull() ?: ""
+                        if (last.contains("Lobby", ignoreCase = true)) {
+                            emptyList()
+                        } else {
+                            listOf("Living Room", "Bedroom", "Master Bedroom", "Common Washroom", "Master Washroom", "Balcony", "Kitchen", "Passage")
+                        }
+                    }
+                    else -> emptyList()
+                }
+
+                val filteredNodes = nextNodes.filter {
+                    customNodeInput.isBlank() || it.contains(customNodeInput, ignoreCase = true)
+                }
+
+                val isCustomScreen = pickerPath.size >= 5 || nextNodes.isEmpty() || (customNodeInput.isNotBlank() && filteredNodes.isEmpty())
+
                 // Card content
                 Card(
                     modifier = Modifier
@@ -1619,7 +1640,6 @@ fun InspectionTabView(viewModel: AppViewModel, isWide: Boolean) {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        val isCustomScreen = pickerPath.size >= 5
                         // Search / Create input inside card
                         Row(
                             modifier = Modifier
@@ -1687,18 +1707,6 @@ fun InspectionTabView(viewModel: AppViewModel, isWide: Boolean) {
                                 )
                             }
                         } else {
-                            val nextNodes = when (pickerPath.size) {
-                                1 -> listOf("Wing - NA")
-                                2 -> listOf("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10")
-                                3 -> listOf("F1 - Lobby Area", "Flat 101", "Flat 102", "Flat 103", "Flat 104")
-                                4 -> listOf("Living Room", "Bedroom", "Master Bedroom", "Common Washroom", "Master Washroom", "Balcony", "Kitchen", "Passage")
-                                else -> emptyList()
-                            }
-
-                            val filteredNodes = nextNodes.filter {
-                                customNodeInput.isBlank() || it.contains(customNodeInput, ignoreCase = true)
-                            }
-
                             LazyColumn(
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -1738,9 +1746,19 @@ fun InspectionTabView(viewModel: AppViewModel, isWide: Boolean) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Bottom persistent Create button
+                val canCreate = if (isCustomScreen) {
+                    customNodeInput.isNotBlank()
+                } else {
+                    pickerPath.isNotEmpty()
+                }
                 Button(
                     onClick = {
-                        val finalLocation = pickerPath.joinToString("/")
+                        val finalPathList = if (customNodeInput.isNotBlank()) {
+                            pickerPath + customNodeInput
+                        } else {
+                            pickerPath
+                        }
+                        val finalLocation = finalPathList.joinToString("/")
                         viewModel.updateEqcLocation(finalLocation)
                         showLocationPicker = false
                     },
@@ -1749,9 +1767,10 @@ fun InspectionTabView(viewModel: AppViewModel, isWide: Boolean) {
                         .height(54.dp),
                     shape = RoundedCornerShape(27.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFCBD5E1),
-                        contentColor = Color(0xFF475569)
-                    )
+                        containerColor = if (canCreate) OrangePrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                        contentColor = if (canCreate) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    ),
+                    enabled = canCreate
                 ) {
                     Text(
                         text = "Create",
@@ -1975,7 +1994,10 @@ fun InspectionTabView(viewModel: AppViewModel, isWide: Boolean) {
 
                 // EQC Location Field
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text(
                             text = "EQC location",
                             fontSize = 13.sp,
@@ -1983,43 +2005,70 @@ fun InspectionTabView(viewModel: AppViewModel, isWide: Boolean) {
                             color = adaptiveGrey
                         )
                         Text(text = " *", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { showLocationPicker = true }
-                        ) {
-                            OutlinedTextField(
-                                value = eqcLocation,
-                                onValueChange = {},
-                                placeholder = { Text("Enter") },
-                                readOnly = true,
-                                enabled = false,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledContainerColor = MaterialTheme.colorScheme.surface,
-                                    disabledBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                ),
-                                singleLine = true
-                            )
-                        }
-                        // Blue-Grey '/' icon button
+                        
                         IconButton(
                             onClick = { showLocationPicker = true },
                             modifier = Modifier
-                                .size(54.dp)
-                                .background(Color(0xFF1E293B), RoundedCornerShape(8.dp))
+                                .size(28.dp)
+                                .background(Color(0xFF1E293B), CircleShape)
                         ) {
-                            Text("/", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Location",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    
+                    if (eqcLocation.isBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showLocationPicker = true }
+                                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                                .padding(16.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text("Select Location Path", color = adaptiveGrey, fontSize = 14.sp)
+                        }
+                    } else {
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val parts = eqcLocation.split("/")
+                            parts.forEachIndexed { idx, part ->
+                                if (idx > 0) {
+                                    Text(
+                                        text = "/",
+                                        color = adaptiveGrey,
+                                        fontSize = 14.sp,
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                    )
+                                }
+                                
+                                val isLast = idx == parts.lastIndex
+                                val containerColor = if (isLast) Color(0xFFE2E8F0) else Color(0xFF111E30)
+                                val textColor = if (isLast) Color(0xFF1E293B) else Color.White
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(containerColor)
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = part,
+                                        color = textColor,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -5598,6 +5647,1229 @@ fun IssueSuccessScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
         ) {
             Text(
                 text = "Go to Issue List",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
+// ==========================================
+// EQC ACTIVE INSPECTION FLOW SCREENS
+// ==========================================
+
+enum class PhotoTargetType {
+    NONE, DRAWING, GENERAL, QUESTION
+}
+
+@Composable
+fun EqcChecklistScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
+    val checklistName by viewModel.activeChecklistName.collectAsState()
+    val locationPath by viewModel.activeLocationPath.collectAsState()
+    val witnesses by viewModel.activeWitnesses.collectAsState()
+    val drawingsCount by viewModel.activeDrawingsCount.collectAsState()
+    val photosCount by viewModel.activePhotosCount.collectAsState()
+    val questions by viewModel.activeQuestions.collectAsState()
+
+    val context = LocalContext.current
+    var remarkQuestionId by remember { mutableStateOf<Int?>(null) }
+    var remarkText by remember { mutableStateOf("") }
+
+    var showPhotoSourceSelector by remember { mutableStateOf(false) }
+    var activePhotoTarget by remember { mutableStateOf(PhotoTargetType.NONE) }
+    var activePhotoQuestionId by remember { mutableStateOf<Int?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            when (activePhotoTarget) {
+                PhotoTargetType.DRAWING -> {
+                    viewModel.addActiveDrawing()
+                    android.widget.Toast.makeText(context, "Drawing captured from Camera successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                PhotoTargetType.GENERAL -> {
+                    viewModel.addActivePhoto()
+                    android.widget.Toast.makeText(context, "General photo captured from Camera successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                PhotoTargetType.QUESTION -> {
+                    activePhotoQuestionId?.let { id ->
+                        viewModel.addQuestionPhoto(id)
+                        android.widget.Toast.makeText(context, "Question photo captured from Camera successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                else -> {}
+            }
+        } else {
+            android.widget.Toast.makeText(context, "Camera capture cancelled", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            try {
+                cameraLauncher.launch(null)
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(context, "Error launching camera: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            android.widget.Toast.makeText(context, "Camera permission denied", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            when (activePhotoTarget) {
+                PhotoTargetType.DRAWING -> {
+                    viewModel.addActiveDrawing()
+                    android.widget.Toast.makeText(context, "Drawing selected from Gallery successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                PhotoTargetType.GENERAL -> {
+                    viewModel.addActivePhoto()
+                    android.widget.Toast.makeText(context, "General photo selected from Gallery successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                PhotoTargetType.QUESTION -> {
+                    activePhotoQuestionId?.let { id ->
+                        viewModel.addQuestionPhoto(id)
+                        android.widget.Toast.makeText(context, "Question photo selected from Gallery successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                else -> {}
+            }
+        } else {
+            android.widget.Toast.makeText(context, "Gallery selection cancelled", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val answeredCount = questions.count { q -> q.answer.isNotBlank() }
+    val totalCount = questions.size
+
+    val isDark = isSystemInDarkTheme()
+    val bgBrush = remember(isDark) {
+        if (isDark) {
+            Brush.verticalGradient(
+                colors = listOf(Color(0xFF030712), Color(0xFF0C0E1E), Color(0xFF1E1B4B))
+            )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(Color(0xFFF9FAFB), Color(0xFFEEF2FF), Color(0xFFE0E7FF))
+            )
+        }
+    }
+
+    // Validation rules:
+    // 1. At least one witness is selected
+    // 2. All questions are answered (Yes/No/Skip)
+    // 3. To make it extremely clear and satisfy photo validations, each question or the overall drawing must have at least 1 photo!
+    val isWitnessValid = witnesses.isNotEmpty()
+    val areAllQuestionsAnswered = answeredCount == totalCount
+    val arePhotosValid = (drawingsCount > 0 || photosCount > 0 || questions.any { it.photosCount > 0 })
+    val isPassEnabled = isWitnessValid && areAllQuestionsAnswered && arePhotosValid
+
+    Scaffold(
+        topBar = {
+            Surface(
+                color = if (isDark) Color(0xFF111827) else Color.White,
+                tonalElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { viewModel.navigateBack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = if (isDark) Color.White else Color.Black)
+                    }
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = checklistName,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color.White else Color.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Single Stage (1/1)",
+                            fontSize = 12.sp,
+                            color = if (isDark) Color.LightGray else Color.Gray
+                        )
+                    }
+                    
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "10:19",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color.White else Color.Black
+                        )
+                        Text(
+                            text = "20 Jul 2026",
+                            fontSize = 11.sp,
+                            color = if (isDark) Color.LightGray else Color.Gray
+                        )
+                    }
+                }
+            }
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(bgBrush)
+                .padding(paddingValues)
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
+            ) {
+                // Answered status card
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1F2937) else Color.White),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = "Checked icon", tint = if (answeredCount == totalCount) Color(0xFF10B981) else Color(0xFFF59E0B))
+                                Text(
+                                    text = "Answered",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = if (isDark) Color.White else Color.Black
+                                )
+                            }
+                            
+                            val statusColor = when {
+                                answeredCount == totalCount -> Color(0xFF10B981)
+                                answeredCount > 0 -> Color(0xFFF59E0B)
+                                else -> Color(0xFFEF4444)
+                            }
+                            Text(
+                                text = "$answeredCount/$totalCount",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = statusColor
+                            )
+                        }
+                    }
+                }
+
+                // Current Activity summary
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Current activity:",
+                                fontSize = 12.sp,
+                                color = if (isDark) Color.LightGray else Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                            
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Icon(Icons.Default.LocationOn, contentDescription = "Location", tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                                Text(
+                                    text = locationPath,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color.White else Color(0xFF1E293B),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Icon(Icons.Default.FactCheck, contentDescription = "Stage", tint = Color(0xFF10B981), modifier = Modifier.size(16.dp))
+                                Text(
+                                    text = "Inspection: Single Stage (1/1)",
+                                    fontSize = 13.sp,
+                                    color = if (isDark) Color.LightGray else Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // INSPECTION WITNESS Section
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "INSPECTION WITNESS",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color.LightGray else Color.DarkGray
+                            )
+                            Text(text = " *", color = OrangePrimary, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val witnessOptions = listOf("Client", "Contractor", "Vendor", "Consultant", "Developer", "Other")
+                            witnessOptions.forEach { witness ->
+                                val isSelected = witnesses.contains(witness)
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(if (isSelected) Color(0xFF111E30) else if (isDark) Color(0xFF1F2937) else Color.White)
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (isSelected) OrangePrimary else if (isDark) Color.Transparent else Color.LightGray,
+                                            shape = RoundedCornerShape(20.dp)
+                                        )
+                                        .clickable { viewModel.toggleActiveWitness(witness) }
+                                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        if (isSelected) {
+                                            Icon(Icons.Default.Check, contentDescription = "Selected", tint = Color.White, modifier = Modifier.size(14.dp))
+                                        }
+                                        Text(
+                                            text = witness,
+                                            color = if (isSelected) Color.White else if (isDark) Color.LightGray else Color.DarkGray,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // DRAWING DETAILS AND CAMERA ATTACHMENTS
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Drawing Column
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "DRAWING DETAILS",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color.LightGray else Color.DarkGray
+                                )
+                                Text(text = " *", color = OrangePrimary, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Box(
+                                modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isDark) Color(0xFF1F2937) else Color.White)
+                                        .border(
+                                            BorderStroke(1.dp, if (isDark) Color.DarkGray else Color.LightGray),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable {
+                                            activePhotoTarget = PhotoTargetType.DRAWING
+                                            activePhotoQuestionId = null
+                                            showPhotoSourceSelector = true
+                                        },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.CameraAlt,
+                                        contentDescription = "Camera",
+                                        tint = OrangePrimary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = if (drawingsCount > 0) "$drawingsCount Attached" else "Add Drawing",
+                                        fontSize = 11.sp,
+                                        color = if (isDark) Color.LightGray else Color.Gray,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        // General Photos Column
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "GENERAL PHOTOS",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color.LightGray else Color.DarkGray
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Box(
+                                modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isDark) Color(0xFF1F2937) else Color.White)
+                                        .border(
+                                            BorderStroke(1.dp, if (isDark) Color.DarkGray else Color.LightGray),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable {
+                                            activePhotoTarget = PhotoTargetType.GENERAL
+                                            activePhotoQuestionId = null
+                                            showPhotoSourceSelector = true
+                                        },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.CameraAlt,
+                                        contentDescription = "Camera",
+                                        tint = Color(0xFF10B981),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = if (photosCount > 0) "$photosCount Attached" else "Add Photo",
+                                        fontSize = 11.sp,
+                                        color = if (isDark) Color.LightGray else Color.Gray,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Divider Label for Questions
+                item {
+                    Text(
+                        text = "CHECKLIST QUESTIONS",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color.LightGray else Color.DarkGray
+                    )
+                }
+
+                // Checklist Question cards
+                items(questions) { question ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1F2937) else Color.White),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Text(
+                                    text = "${question.id}. ${question.text}",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color.White else Color(0xFF1F2937),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                
+                                if (question.answer.isNotBlank()) {
+                                    val badgeColor = when (question.answer) {
+                                        "Yes" -> Color(0xFF10B981)
+                                        "No" -> Color(0xFFEF4444)
+                                        else -> Color(0xFF64748B)
+                                    }
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(badgeColor.copy(alpha = 0.15f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = if (question.answer == "Skip") "SKIPPED" else "ANSWERED",
+                                            color = badgeColor,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Segmented Option Buttons (Yes / No / Skip)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf("Yes", "No", "Skip").forEach { opt ->
+                                    val isSel = question.answer == opt
+                                    val btnBg = if (isSel) {
+                                        when (opt) {
+                                            "Yes" -> Color(0xFF10B981)
+                                            "No" -> Color(0xFFEF4444)
+                                            else -> Color(0xFF64748B)
+                                        }
+                                    } else {
+                                        if (isDark) Color(0xFF374151) else Color(0xFFF3F4F6)
+                                    }
+                                    val btnTextCol = if (isSel) Color.White else if (isDark) Color.LightGray else Color.DarkGray
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(38.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(btnBg)
+                                            .clickable { viewModel.updateQuestionAnswer(question.id, opt) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = opt,
+                                            color = btnTextCol,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HorizontalDivider(color = if (isDark) Color(0xFF374151) else Color(0xFFE5E7EB))
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Action buttons: Remark & Photos inside Question
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Add Remark Row
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .clickable {
+                                            remarkQuestionId = question.id
+                                            remarkText = question.remark
+                                        }
+                                        .padding(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Message,
+                                        contentDescription = "Remark Icon",
+                                        tint = if (question.remark.isNotBlank()) OrangePrimary else Color.Gray,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = if (question.remark.isNotBlank()) question.remark else "Remark",
+                                        fontSize = 12.sp,
+                                        color = if (question.remark.isNotBlank()) OrangePrimary else Color.Gray,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.widthIn(max = 120.dp)
+                                    )
+                                }
+
+                                // Photo attach box for Question
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isDark) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                        .clickable {
+                                            activePhotoTarget = PhotoTargetType.QUESTION
+                                            activePhotoQuestionId = question.id
+                                            showPhotoSourceSelector = true
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.CameraAlt, contentDescription = "Camera Icon", tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                                    Text(
+                                        text = "Photos (${question.photosCount}) *",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = OrangePrimary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Bottom Sticky Buttons Panel
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+                color = if (isDark) Color(0xFF111827) else Color.White,
+                tonalElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // FAIL button
+                    Button(
+                        onClick = {
+                            android.widget.Toast.makeText(context, "Inspection marked as Failed!", android.widget.Toast.LENGTH_SHORT).show()
+                            viewModel.navigateBack()
+                        },
+                        enabled = !isPassEnabled,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (!isPassEnabled) Color(0xFF64748B) else Color.LightGray,
+                            contentColor = if (!isPassEnabled) Color.White else Color.DarkGray
+                        )
+                    ) {
+                        Text("Fail", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    // PASS button (enabled conditionally)
+                    Button(
+                        onClick = {
+                            if (isPassEnabled) {
+                                viewModel.navigateTo(Screen.EQC_SELECT_TEAM)
+                            }
+                        },
+                        enabled = isPassEnabled,
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isPassEnabled) Color(0xFF111E30) else Color.LightGray,
+                            contentColor = if (isPassEnabled) Color.White else Color.DarkGray
+                        )
+                    ) {
+                        Text("Pass", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+
+    // Remark Dialog Box
+    if (remarkQuestionId != null) {
+        AlertDialog(
+            onDismissRequest = { remarkQuestionId = null },
+            title = { Text("Add Remark") },
+            text = {
+                OutlinedTextField(
+                    value = remarkText,
+                    onValueChange = { remarkText = it },
+                    placeholder = { Text("Enter your remark...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        remarkQuestionId?.let { id ->
+                            viewModel.updateQuestionRemark(id, remarkText)
+                        }
+                        remarkQuestionId = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { remarkQuestionId = null }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            }
+        )
+    }
+
+    // Photo Source Selector Dialog
+    if (showPhotoSourceSelector) {
+        AlertDialog(
+            onDismissRequest = { showPhotoSourceSelector = false },
+            title = {
+                Text(
+                    text = "Attach Photo",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = if (isDark) Color.White else Color(0xFF1E293B)
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Select a source to add your photo:",
+                        fontSize = 14.sp,
+                        color = if (isDark) Color.LightGray else Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    // Option 1: Take Photo
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isDark) Color(0xFF374151) else Color(0xFFF3F4F6))
+                            .clickable {
+                                val permissionCheck = androidx.core.content.ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.CAMERA
+                                )
+                                if (permissionCheck == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                    try {
+                                        cameraLauncher.launch(null)
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, "Error launching camera: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                }
+                                showPhotoSourceSelector = false
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Camera",
+                            tint = OrangePrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "Take Photo",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = if (isDark) Color.White else Color(0xFF1E293B)
+                        )
+                    }
+
+                    // Option 2: Choose from Gallery
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isDark) Color(0xFF374151) else Color(0xFFF3F4F6))
+                            .clickable {
+                                try {
+                                    galleryLauncher.launch("image/*")
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "Error opening gallery: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                                showPhotoSourceSelector = false
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Gallery",
+                            tint = Color(0xFF10B981),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "Choose from Gallery",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = if (isDark) Color.White else Color(0xFF1E293B)
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPhotoSourceSelector = false }) {
+                    Text("Cancel", color = OrangePrimary, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun EqcSelectTeamScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
+    val checklistName by viewModel.activeChecklistName.collectAsState()
+    val locationPath by viewModel.activeLocationPath.collectAsState()
+    val selectedTeam by viewModel.selectedTeam.collectAsState()
+
+    val isDark = isSystemInDarkTheme()
+    val bgBrush = remember(isDark) {
+        if (isDark) {
+            Brush.verticalGradient(
+                colors = listOf(Color(0xFF030712), Color(0xFF0C0E1E), Color(0xFF1E1B4B))
+            )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(Color(0xFFF9FAFB), Color(0xFFEEF2FF), Color(0xFFE0E7FF))
+            )
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            Surface(
+                color = if (isDark) Color(0xFF111827) else Color.White,
+                tonalElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { viewModel.navigateBack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = if (isDark) Color.White else Color.Black)
+                    }
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = locationPath,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color.White else Color.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = checklistName,
+                            fontSize = 12.sp,
+                            color = if (isDark) Color.LightGray else Color.Gray
+                        )
+                    }
+                }
+            }
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(bgBrush)
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                Text(
+                    text = "Post-Inspection Flow",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isDark) Color.White else Color(0xFF1E293B)
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1F2937) else Color.White),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Select Team Form Field
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Select team",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color.LightGray else Color.DarkGray
+                                )
+                                Text(text = " *", color = OrangePrimary, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Non-editable display field showing Test Agency as requested
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(54.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isDark) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                    .border(BorderStroke(1.dp, if (isDark) Color.Transparent else Color.LightGray), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Test Agency",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color.White else Color(0xFF1E293B)
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Dropdown Arrow",
+                                        tint = if (isDark) Color.LightGray else Color.Gray
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Bottom Buttons panel
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+                color = if (isDark) Color(0xFF111827) else Color.White,
+                tonalElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { viewModel.navigateBack() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, if (isDark) Color.LightGray else Color.DarkGray),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (isDark) Color.White else Color.Black)
+                    ) {
+                        Text("Back", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = { viewModel.completeQc() },
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF111E30),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Done", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EqcSuccessScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
+    val checklistName by viewModel.activeChecklistName.collectAsState()
+    val locationPath by viewModel.activeLocationPath.collectAsState()
+
+    val isDark = isSystemInDarkTheme()
+    val bgBrush = remember(isDark) {
+        if (isDark) {
+            Brush.verticalGradient(
+                colors = listOf(Color(0xFF030712), Color(0xFF0C0E1E), Color(0xFF111827))
+            )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(Color(0xFFF9FAFB), Color(0xFFEEF2FF), Color(0xFFE0E7FF))
+            )
+        }
+    }
+
+    // Interactive custom infinite animations
+    val infiniteTransition = rememberInfiniteTransition(label = "StarAnimation")
+    
+    // Star scale dynamic breathing pulse
+    val starScale by infiniteTransition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "StarScale"
+    )
+
+    // Gentle star rotation swing
+    val starRotation by infiniteTransition.animateFloat(
+        initialValue = -12f,
+        targetValue = 12f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "StarRotation"
+    )
+
+    // Expanding backdrop success halo
+    val haloScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1300, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "HaloScale"
+    )
+
+    // Halo alpha fading out
+    val haloAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 0.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1300, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "HaloAlpha"
+    )
+
+    // Entry anim state for the card and subheadings
+    var animatedEntry by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        animatedEntry = true
+    }
+
+    val entranceAlpha by animateFloatAsState(
+        targetValue = if (animatedEntry) 1f else 0f,
+        animationSpec = tween(900, easing = FastOutSlowInEasing),
+        label = "EntranceAlpha"
+    )
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(bgBrush)
+            .statusBarsPadding()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Top Sync Successful Header Bar
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .graphicsLayer(alpha = entranceAlpha),
+            color = Color(0xFF10B981)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp, horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Sync successful!",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(0.15f))
+
+        // Large Green Success Badge Animated Visuals
+        Box(
+            modifier = Modifier.size(160.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Expanding background aura/halo (Green themed to match Success!)
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .graphicsLayer(
+                        scaleX = haloScale,
+                        scaleY = haloScale,
+                        alpha = haloAlpha
+                    )
+                    .background(Color(0xFFD1FAE5), shape = CircleShape)
+            )
+
+            // Primary emerald base with dynamic breathing scaling
+            Surface(
+                modifier = Modifier
+                    .size(100.dp)
+                    .graphicsLayer(
+                        scaleX = starScale,
+                        scaleY = starScale
+                    ),
+                shape = CircleShape,
+                color = Color(0xFF10B981), // Emerald Green
+                shadowElevation = 6.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.DoneAll,
+                        contentDescription = "Success check",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(54.dp)
+                            .graphicsLayer(
+                                rotationZ = starRotation
+                            )
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "WELL DONE!",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = OrangePrimary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.graphicsLayer(alpha = entranceAlpha)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "Each EQC stage is a step towards Quality.",
+            fontSize = 14.sp,
+            color = if (isDark) Color.LightGray else Color.Gray,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.graphicsLayer(alpha = entranceAlpha)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Success PASS Badge
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFF10B981).copy(alpha = 0.15f))
+                .padding(horizontal = 14.dp, vertical = 6.dp)
+                .graphicsLayer(alpha = entranceAlpha)
+        ) {
+            Text(
+                text = "PASS",
+                color = Color(0xFF10B981),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(0.15f))
+
+        // Bottom EQC details overview card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer(alpha = entranceAlpha),
+            colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1F2937) else Color.White),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Default.LocationOn, contentDescription = "Location icon", tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                    Text(
+                        text = locationPath,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color.White else Color(0xFF1F2937),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Default.FactCheck, contentDescription = "Checklist icon", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                    Text(
+                        text = checklistName,
+                        fontSize = 13.sp,
+                        color = if (isDark) Color.LightGray else Color.Gray
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Default.Pending, contentDescription = "Stage icon", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                    Text(
+                        text = "Inspect Stage - Single Stage (1/1)",
+                        fontSize = 13.sp,
+                        color = if (isDark) Color.LightGray else Color.Gray
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Default.Person, contentDescription = "Inspector icon", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                    Text(
+                        text = "Saharsh Sathyanarayanan",
+                        fontSize = 13.sp,
+                        color = if (isDark) Color.LightGray else Color.Gray
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(0.2f))
+
+        // Go to EQC List persistent CTA button
+        Button(
+            onClick = { viewModel.goToEqcList() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(27.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111E30))
+        ) {
+            Text(
+                text = "Go to EQC List",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp

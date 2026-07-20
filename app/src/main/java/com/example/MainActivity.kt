@@ -57,6 +57,9 @@ class MainActivity : ComponentActivity() {
             Screen.PHONE_CONTACTS_PICKER -> PhoneContactsPickerScreen(viewModel = viewModel, modifier = Modifier.fillMaxSize())
             Screen.ISSUE_REVIEW -> IssueReviewScreen(viewModel = viewModel, modifier = Modifier.fillMaxSize())
             Screen.ISSUE_SUCCESS -> IssueSuccessScreen(viewModel = viewModel, modifier = Modifier.fillMaxSize())
+            Screen.EQC_CHECKLIST -> EqcChecklistScreen(viewModel = viewModel, modifier = Modifier.fillMaxSize())
+            Screen.EQC_SELECT_TEAM -> EqcSelectTeamScreen(viewModel = viewModel, modifier = Modifier.fillMaxSize())
+            Screen.EQC_SUCCESS -> EqcSuccessScreen(viewModel = viewModel, modifier = Modifier.fillMaxSize())
           }
         }
       }

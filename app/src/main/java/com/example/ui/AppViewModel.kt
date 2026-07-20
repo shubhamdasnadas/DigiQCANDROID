@@ -37,7 +37,10 @@ enum class Screen {
     ASSIGN_CONTACTS,
     PHONE_CONTACTS_PICKER,
     ISSUE_REVIEW,
-    ISSUE_SUCCESS
+    ISSUE_SUCCESS,
+    EQC_CHECKLIST,
+    EQC_SELECT_TEAM,
+    EQC_SUCCESS
 }
 
 enum class BottomNavTab {
@@ -195,6 +198,111 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _eqcLocationInput = MutableStateFlow("")
     val eqcLocationInput = _eqcLocationInput.asStateFlow()
 
+    // Active QC Screen State
+    data class ActiveQuestion(
+        val id: Int,
+        val text: String,
+        val answer: String = "", // "", "Yes", "No", "Skip"
+        val remark: String = "",
+        val photosCount: Int = 0
+    )
+
+    private val _activeChecklistName = MutableStateFlow("")
+    val activeChecklistName = _activeChecklistName.asStateFlow()
+
+    private val _activeLocationPath = MutableStateFlow("")
+    val activeLocationPath = _activeLocationPath.asStateFlow()
+
+    private val _activeProject = MutableStateFlow("")
+    val activeProject = _activeProject.asStateFlow()
+
+    private val _activeWitnesses = MutableStateFlow<Set<String>>(emptySet())
+    val activeWitnesses = _activeWitnesses.asStateFlow()
+
+    private val _activeDrawingsCount = MutableStateFlow(0)
+    val activeDrawingsCount = _activeDrawingsCount.asStateFlow()
+
+    private val _activePhotosCount = MutableStateFlow(0)
+    val activePhotosCount = _activePhotosCount.asStateFlow()
+
+    private val _activeQuestions = MutableStateFlow<List<ActiveQuestion>>(emptyList())
+    val activeQuestions = _activeQuestions.asStateFlow()
+
+    private val _selectedTeam = MutableStateFlow("Test Agency")
+    val selectedTeam = _selectedTeam.asStateFlow()
+
+    fun toggleActiveWitness(witness: String) {
+        val current = _activeWitnesses.value
+        _activeWitnesses.value = if (current.contains(witness)) {
+            current - witness
+        } else {
+            current + witness
+        }
+    }
+
+    fun addActiveDrawing() {
+        _activeDrawingsCount.value += 1
+    }
+
+    fun addActivePhoto() {
+        _activePhotosCount.value += 1
+    }
+
+    fun updateQuestionAnswer(questionId: Int, answer: String) {
+        _activeQuestions.value = _activeQuestions.value.map { q ->
+            if (q.id == questionId) q.copy(answer = answer) else q
+        }
+    }
+
+    fun updateQuestionRemark(questionId: Int, remark: String) {
+        _activeQuestions.value = _activeQuestions.value.map { q ->
+            if (q.id == questionId) q.copy(remark = remark) else q
+        }
+    }
+
+    fun addQuestionPhoto(questionId: Int) {
+        _activeQuestions.value = _activeQuestions.value.map { q ->
+            if (q.id == questionId) q.copy(photosCount = q.photosCount + 1) else q
+        }
+    }
+
+    fun updateSelectedTeam(team: String) {
+        _selectedTeam.value = team
+    }
+
+    fun completeQc() {
+        val proj = _activeProject.value
+        val check = _activeChecklistName.value
+        val loc = _activeLocationPath.value
+
+        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy hh:mm a", java.util.Locale.getDefault())
+        val currentDateTime = sdf.format(java.util.Date())
+
+        val prefix = if (proj.equals("Training Project", ignoreCase = true)) "TP" else "ANKUR"
+        val fullTitle = if (loc.startsWith(prefix, ignoreCase = true)) loc else "$prefix/$loc"
+
+        val newItem = EqcItem(
+            id = java.util.UUID.randomUUID().toString(),
+            title = fullTitle,
+            checklistName = check,
+            inspectStage = "Single Stage (1/1)",
+            inspector = "Saharsh Sathyanarayanan",
+            dateTime = currentDateTime,
+            status = "Available",
+            project = proj
+        )
+
+        _eqcList.value = listOf(newItem) + _eqcList.value
+        setAddingEqc(false)
+        navigateTo(Screen.EQC_SUCCESS)
+    }
+
+    fun goToEqcList() {
+        screenStack.clear()
+        screenStack.add(Screen.HOME)
+        _currentBottomTab.value = BottomNavTab.INSPECTION
+    }
+
     private val _eqcList = MutableStateFlow<List<EqcItem>>(
         listOf(
             EqcItem(
@@ -275,25 +383,53 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             return false
         }
 
-        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy hh:mm a", java.util.Locale.getDefault())
-        val currentDateTime = sdf.format(java.util.Date())
+        // Initialize active EQC state
+        _activeProject.value = proj
+        _activeChecklistName.value = check
+        _activeLocationPath.value = loc
+        _activeWitnesses.value = emptySet()
+        _activeDrawingsCount.value = 0
+        _activePhotosCount.value = 0
+        _selectedTeam.value = "Test Agency"
 
-        val prefix = if (proj.equals("Training Project", ignoreCase = true)) "TP" else "ANKUR"
-        val fullTitle = if (loc.startsWith(prefix, ignoreCase = true)) loc else "$prefix/$loc"
+        // Generate questions based on selected checklist
+        val questions = when {
+            check.contains("Column", ignoreCase = true) -> listOf(
+                "Is Column Centreline proper?",
+                "Distances between column/columns are proper?",
+                "Column Sizes are proper?",
+                "Is column reinforcement matching drawings?",
+                "Column reduction or skew, if any?",
+                "Is provision kept for Electrical Box/points on columns (if any)"
+            )
+            check.contains("Plumbing", ignoreCase = true) -> listOf(
+                "Are plumbing pipes aligned correctly?",
+                "Is water pressure testing done?",
+                "Are there any leaks detected?",
+                "Are all fittings secured and sealed?",
+                "Are drain slopes correct?"
+            )
+            check.contains("Joint", ignoreCase = true) || check.contains("Flat", ignoreCase = true) -> listOf(
+                "Are wall finishes uniform?",
+                "Do doors and windows operate smoothly?",
+                "Are electrical outlets fully functional?",
+                "Is flooring free of chips and cracks?",
+                "Are sanitary fittings checked?"
+            )
+            else -> listOf(
+                "Is plaster thickness as per specs?",
+                "Are surfaces level and smooth?",
+                "Are corners and edges perfectly sharp?",
+                "Is curing completed as required?",
+                "Are there any shrinkage cracks visible?"
+            )
+        }
 
-        val newItem = EqcItem(
-            id = java.util.UUID.randomUUID().toString(),
-            title = fullTitle,
-            checklistName = check,
-            inspectStage = "Inspect Stage - During (2/3)",
-            inspector = "Pankti Mehta",
-            dateTime = currentDateTime,
-            status = "Available",
-            project = proj
-        )
+        _activeQuestions.value = questions.mapIndexed { index, text ->
+            ActiveQuestion(id = index + 1, text = text)
+        }
 
-        _eqcList.value = listOf(newItem) + _eqcList.value
-        setAddingEqc(false)
+        navigateTo(Screen.EQC_CHECKLIST)
         return true
     }
 
