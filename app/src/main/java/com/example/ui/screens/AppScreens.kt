@@ -500,24 +500,24 @@ fun SignInScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // Tab selectors for Next.js App Router, Pages Router, Database SQL, .env.local, Setup Guide
+                        // Tab selectors for Next.js App Router, Pages Router, Database SQL, .env.local, Setup Guide, Flutter
                         var selectedDevTab by remember { mutableStateOf(0) }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            listOf("App Router", "Pages Router", "Database SQL", ".env.local", "Setup Guide").forEachIndexed { idx, tabTitle ->
+                            listOf("App Router", "Pages Router", "Database SQL", ".env.local", "Flutter Structure", "Setup Guide").forEachIndexed { idx, tabTitle ->
                                 Button(
                                     onClick = { selectedDevTab = idx },
                                     modifier = Modifier.weight(1f).height(32.dp),
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                                     shape = RoundedCornerShape(6.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = if (selectedDevTab == idx) Color(0xFF8B5CF6) else MaterialTheme.colorScheme.surfaceVariant,
                                         contentColor = if (selectedDevTab == idx) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 ) {
-                                    Text(tabTitle, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                    Text(tabTitle, fontSize = 7.5.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -703,6 +703,31 @@ fun SignInScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
                             DATABASE_URL=postgresql://postgres:your_postgres_password_here@localhost:5432/cisodashboard
                             """.trimIndent()
 
+                            4 -> """
+                            FLUTTER_APPLICATION_1/
+                            ├── android/
+                            ├── ios/
+                            ├── windows/
+                            ├── pubspec.yaml
+                            ├── setup.sql
+                            │
+                            └── lib/
+                                ├── main.dart                   # Entry point & MaterialApp setup
+                                ├── constants/
+                                │   └── app_colors.dart         # Theme colors & styling constants
+                                ├── models/
+                                │   ├── user_model.dart         # User data model
+                                │   └── organization_model.dart # Org data model
+                                ├── services/
+                                │   └── api_service.dart        # Next.js / PostgreSQL HTTP service
+                                ├── screens/
+                                │   ├── sign_in_screen.dart     # Login & Connection UI
+                                │   └── dashboard_screen.dart   # CISO Main Dashboard UI
+                                └── widgets/
+                                    ├── custom_text_field.dart  # Styled input text field
+                                    └── server_config_card.dart # 10.0.2.2 / LAN IP switcher
+                            """.trimIndent()
+
                             else -> """
                             1. Save the 'setup.sql' file created at the project root to your computer.
                             
@@ -716,7 +741,7 @@ fun SignInScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
                             4. Add your database configuration in '.env.local' and run:
                                npm run dev
 
-                            5. To connect this Android app to your running local server:
+                            5. To connect this Android/Flutter app to your running local server:
                                - EMULATOR: Select "Next.js Local API (10.0.2.2:3000)".
                                - PHYSICAL PHONE: Ensure phone and PC are on the same Wi-Fi.
                                  Select "Custom IP Address/Port", input:
