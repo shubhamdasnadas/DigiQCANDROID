@@ -332,12 +332,13 @@ fun SignInScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
             var serverExpanded by remember { mutableStateOf(false) }
             val serverOptions = listOf(
                 "Server Configuration",
-                "Default Local API (10.0.2.2:3000)",
+                "Next.js Local API (10.0.2.2:3000)",
                 "Production Cloud Server",
-                "Staging Server (Port 3001)",
-                "Custom Port 8080 Fallback"
+                "Next.js Staging Server (Port 3001)",
+                "Custom IP Address/Port"
             )
             var selectedServer by remember { mutableStateOf("Server Configuration") }
+            var customUrlInput by remember { mutableStateOf("http://10.0.2.2:3000/") }
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.fillMaxWidth()) {
@@ -390,18 +391,395 @@ fun SignInScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
                                 onClick = {
                                     selectedServer = srv
                                     serverExpanded = false
-                                    // Dynamically switch Base Url of the API & reload
-                                    val newUrl = when (srv) {
-                                        "Default Local API (10.0.2.2:3000)" -> "http://10.0.2.2:3000/"
-                                        "Production Cloud Server" -> "https://api.valid8.com/"
-                                        "Staging Server (Port 3001)" -> "http://10.0.2.2:3001/"
-                                        "Custom Port 8080 Fallback" -> "http://10.0.2.2:8080/"
-                                        else -> "http://10.0.2.2:3000/"
+                                    if (srv != "Custom IP Address/Port") {
+                                        // Dynamically switch Base Url of the API & reload
+                                        val newUrl = when (srv) {
+                                            "Next.js Local API (10.0.2.2:3000)" -> "http://10.0.2.2:3000/"
+                                            "Production Cloud Server" -> "https://api.valid8.com/"
+                                            "Next.js Staging Server (Port 3001)" -> "http://10.0.2.2:3001/"
+                                            else -> "http://10.0.2.2:3000/"
+                                        }
+                                        com.example.data.CisoBackendApi.updateBaseUrl(newUrl)
+                                        viewModel.fetchDatabaseData()
                                     }
-                                    com.example.data.CisoBackendApi.updateBaseUrl(newUrl)
-                                    viewModel.fetchDatabaseData()
                                 }
                             )
+                        }
+                    }
+                }
+            }
+
+            if (selectedServer == "Custom IP Address/Port") {
+                Spacer(modifier = Modifier.height(12.dp))
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Custom Server Base URL",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextGrey,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Start
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = customUrlInput,
+                        onValueChange = { customUrlInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("e.g. http://192.168.1.100:3000/") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = OrangePrimary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            com.example.data.CisoBackendApi.updateBaseUrl(customUrlInput)
+                            viewModel.fetchDatabaseData()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(42.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
+                    ) {
+                        Text("Connect & Verify", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // Developer Hub Card
+            var showDevHub by remember { mutableStateOf(false) }
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDevHub = !showDevHub },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Code,
+                                contentDescription = "Developer Hub",
+                                tint = Color(0xFF10B981),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Developer Backend Hub",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Icon(
+                            imageVector = if (showDevHub) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = "Expand Developer Hub",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    if (showDevHub) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Expose your PostgreSQL database ('digiQC') inside your Next.js project using these API routes. This allows both your web frontend and this Android client to securely share the same PostgreSQL backend:",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            lineHeight = 16.sp
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Tab selectors for Next.js App Router, Pages Router, Database SQL, .env.local, Setup Guide
+                        var selectedDevTab by remember { mutableStateOf(0) }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf("App Router", "Pages Router", "Database SQL", ".env.local", "Setup Guide").forEachIndexed { idx, tabTitle ->
+                                Button(
+                                    onClick = { selectedDevTab = idx },
+                                    modifier = Modifier.weight(1f).height(32.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                                    shape = RoundedCornerShape(6.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selectedDevTab == idx) Color(0xFF8B5CF6) else MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = if (selectedDevTab == idx) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Text(tabTitle, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                        val context = LocalContext.current
+
+                        val codeText = when (selectedDevTab) {
+                            0 -> """
+                            // 1. Create app/api/login/route.ts
+                            import { NextResponse } from 'next/server';
+                            import { Pool } from 'pg';
+                            import bcrypt from 'bcrypt';
+
+                            const pool = new Pool({
+                              connectionString: process.env.DATABASE_URL
+                            });
+
+                            export async function POST(request: Request) {
+                              try {
+                                const { username, password, organization } = await request.json();
+                                
+                                // Find organisation by name or slug
+                                const orgRes = await pool.query(
+                                  'SELECT * FROM organisations WHERE org_name = ${'$'}1 OR slug = ${'$'}2', 
+                                  [organization, organization]
+                                );
+                                if (orgRes.rows.length === 0) {
+                                  return NextResponse.json({ success: false, message: 'Organisation not found' });
+                                }
+                                const org = orgRes.rows[0];
+
+                                // Check central users table
+                                const userRes = await pool.query('SELECT * FROM users WHERE username = ${'$'}1', [username]);
+                                if (userRes.rows.length > 0) {
+                                  const user = userRes.rows[0];
+                                  const match = await bcrypt.compare(password, user.password);
+                                  const isPlaintextMatch = password === user.password; // fallback
+                                  
+                                  if ((match || isPlaintextMatch) && user.org_ids.includes(org.id)) {
+                                    return NextResponse.json({
+                                      success: true,
+                                      message: 'Authentication successful',
+                                      username: user.username,
+                                      organization: org.org_name
+                                    });
+                                  }
+                                }
+
+                                // Check org-level users fallback
+                                const orgUserRes = await pool.query(
+                                  'SELECT * FROM org_users WHERE (name = ${'$'}1 OR email = ${'$'}2) AND org_id = ${'$'}3',
+                                  [username, username, org.id]
+                                );
+                                if (orgUserRes.rows.length > 0) {
+                                  const orgUser = orgUserRes.rows[0];
+                                  if (orgUser.password === password) {
+                                    return NextResponse.json({
+                                      success: true,
+                                      message: 'Authentication successful',
+                                      username: orgUser.name,
+                                      organization: org.org_name
+                                    });
+                                  }
+                                }
+
+                                return NextResponse.json({ success: false, message: 'Invalid credentials or unauthorized' });
+                              } catch (err: any) {
+                                return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+                              }
+                            }
+
+                            // 2. Create app/api/checklists/route.ts
+                            export async function GET() {
+                              try {
+                                const result = await pool.query('SELECT name, category FROM checklists ORDER BY name ASC');
+                                return NextResponse.json(result.rows);
+                              } catch (err: any) {
+                                return NextResponse.json({ error: err.message }, { status: 500 });
+                              }
+                            }
+
+                            // 3. Create app/api/organizations/route.ts
+                            export async function GET() {
+                              try {
+                                const result = await pool.query('SELECT org_name AS name, slug AS code FROM organisations ORDER BY org_name ASC');
+                                return NextResponse.json(result.rows);
+                              } catch (err: any) {
+                                return NextResponse.json({ error: err.message }, { status: 500 });
+                              }
+                            }
+                            """.trimIndent()
+
+                            1 -> """
+                            // 1. Create pages/api/login.ts
+                            import type { NextApiRequest, NextApiResponse } from 'next';
+                            import { Pool } from 'pg';
+                            import bcrypt from 'bcrypt';
+
+                            const pool = new Pool({
+                              connectionString: process.env.DATABASE_URL
+                            });
+
+                            export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+                              if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
+                              try {
+                                const { username, password, organization } = req.body;
+                                const orgRes = await pool.query('SELECT * FROM organisations WHERE org_name = ${'$'}1 OR slug = ${'$'}2', [organization, organization]);
+                                if (orgRes.rows.length === 0) return res.status(200).json({ success: false, message: 'Organisation not found' });
+                                const org = orgRes.rows[0];
+
+                                const userRes = await pool.query('SELECT * FROM users WHERE username = ${'$'}1', [username]);
+                                if (userRes.rows.length > 0) {
+                                  const user = userRes.rows[0];
+                                  if ((await bcrypt.compare(password, user.password) || password === user.password) && user.org_ids.includes(org.id)) {
+                                    return res.status(200).json({ success: true, message: 'Authentication successful', username: user.username, organization: org.org_name });
+                                  }
+                                }
+                                res.status(200).json({ success: false, message: 'Invalid credentials' });
+                              } catch (err: any) {
+                                res.status(500).json({ success: false, message: err.message });
+                              }
+                            }
+                            """.trimIndent()
+
+                            2 -> """
+                            -- ============================================================
+                            -- PostgreSQL database setup for 'cisodashboard'
+                            -- ============================================================
+                            CREATE DATABASE cisodashboard;
+                            \c cisodashboard
+
+                            CREATE TABLE organisations (
+                              id          SERIAL       PRIMARY KEY,
+                              org_name    VARCHAR(100) NOT NULL,
+                              address     TEXT,
+                              mobile_no   VARCHAR(20),
+                              slug        VARCHAR(100) UNIQUE,
+                              is_active   BOOLEAN      DEFAULT TRUE
+                            );
+
+                            CREATE TABLE users (
+                              id SERIAL PRIMARY KEY,
+                              username VARCHAR(100) UNIQUE NOT NULL,
+                              password VARCHAR(255) NOT NULL,
+                              role VARCHAR(50) NOT NULL,
+                              org_ids INTEGER[]
+                            );
+
+                            CREATE TABLE checklists (
+                              id SERIAL PRIMARY KEY,
+                              name VARCHAR(255) NOT NULL,
+                              category VARCHAR(100) DEFAULT 'General'
+                            );
+
+                            -- Seed organizations
+                            INSERT INTO organisations (org_name, slug) VALUES
+                            ('Techsec Global Private Ltd', 'techsec'),
+                            ('PCPL Construction', 'pcpl'),
+                            ('Acme Cyber Defense', 'acme'),
+                            ('Northwind Logistics', 'northwind'),
+                            ('BlueShield Healthcare', 'blueshield');
+
+                            -- Seed checklists
+                            INSERT INTO checklists (name, category) VALUES
+                            ('Safety Audit Checklist', 'Safety'),
+                            ('Concrete Strength Inspection', 'Quality Control'),
+                            ('HVAC Operational Verification', 'HVAC'),
+                            ('Electrical Systems Compliance', 'Electrical'),
+                            ('Final Finish & Polish Punchlist', 'Final Delivery'),
+                            ('Structural Weld Integrity', 'Structural');
+                            """.trimIndent()
+
+                            3 -> """
+                            # Place these in .env.local at the root of your Next.js project
+                            PG_HOST=localhost
+                            PG_PORT=5432
+                            PG_DATABASE=cisodashboard
+                            PG_USER=postgres
+                            PG_PASSWORD=your_postgres_password_here
+                            DATABASE_URL=postgresql://postgres:your_postgres_password_here@localhost:5432/cisodashboard
+                            """.trimIndent()
+
+                            else -> """
+                            1. Save the 'setup.sql' file created at the project root to your computer.
+                            
+                            2. Run the database setup script in cmd/PowerShell:
+                               psql -U postgres -d postgres -f "C:\setup.sql"
+
+                            3. Install dependencies in your Next.js directory:
+                               npm install pg bcrypt
+                               npm install --save-dev @types/pg @types/bcrypt
+
+                            4. Add your database configuration in '.env.local' and run:
+                               npm run dev
+
+                            5. To connect this Android app to your running local server:
+                               - EMULATOR: Select "Next.js Local API (10.0.2.2:3000)".
+                               - PHYSICAL PHONE: Ensure phone and PC are on the same Wi-Fi.
+                                 Select "Custom IP Address/Port", input:
+                                 http://YOUR_PC_IP:3000
+                                 and click "Connect & Verify".
+                            """.trimIndent()
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp)
+                                .background(Color(0xFF0F172A), shape = RoundedCornerShape(8.dp))
+                                .border(1.dp, Color(0xFF334155), shape = RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        ) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = when(selectedDevTab) {
+                                            0 -> "App Router API"
+                                            1 -> "Pages Router API"
+                                            2 -> "Database SQL"
+                                            3 -> ".env.local"
+                                            else -> "Connection Guide"
+                                        },
+                                        color = Color(0xFF94A3B8),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(codeText))
+                                            android.widget.Toast.makeText(context, "Copied to clipboard!", android.widget.Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = "Copy code",
+                                            tint = Color(0xFF10B981),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Divider(color = Color(0xFF1E293B), modifier = Modifier.padding(vertical = 4.dp))
+                                Box(modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                ) {
+                                    Text(
+                                        text = codeText,
+                                        color = if (selectedDevTab == 4) Color(0xFFE2E8F0) else Color(0xFF34D399),
+                                        fontSize = 11.sp,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        lineHeight = 15.sp
+                                    )
+                                }
+                            }
                         }
                     }
                 }

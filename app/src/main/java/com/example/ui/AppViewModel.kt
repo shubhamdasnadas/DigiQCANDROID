@@ -144,15 +144,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // PostgreSQL Backend (Port 3000 / cisodashboard DB) States
     private val _organizations = MutableStateFlow<List<String>>(
-        listOf("CISO Security Org", "Ankur Projects", "Venus Electric", "Main Corporate Team")
+        listOf(
+            "Techsec Global Private Ltd",
+            "PCPL Construction",
+            "Acme Cyber Defense",
+            "Northwind Logistics",
+            "BlueShield Healthcare"
+        )
     )
     val organizations = _organizations.asStateFlow()
 
-    private val _selectedOrganization = MutableStateFlow("CISO Security Org")
+    private val _selectedOrganization = MutableStateFlow("Techsec Global Private Ltd")
     val selectedOrganization = _selectedOrganization.asStateFlow()
 
     private val _checklists = MutableStateFlow<List<String>>(
-        listOf("Arch - Column Starter", "Arch - Plumbing Checklist", "CRM -- Joint Flat Inspection", "Execution - Internal Plaster")
+        listOf(
+            "Safety Audit Checklist",
+            "Concrete Strength Inspection",
+            "HVAC Operational Verification",
+            "Electrical Systems Compliance",
+            "Final Finish & Polish Punchlist",
+            "Structural Weld Integrity"
+        )
     )
     val checklists = _checklists.asStateFlow()
 
